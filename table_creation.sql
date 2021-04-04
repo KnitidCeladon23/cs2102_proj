@@ -110,7 +110,7 @@ CREATE TABLE Course_packages (
     sale_end_date           DATE not null,
     pkg_name                TEXT not null,
     price                   NUMERIC not null,
-    PRIMARY KEY             (package_id),
+    PRIMARY KEY             (package_id)
 );
  
 CREATE TABLE Buys (
@@ -204,11 +204,13 @@ create table Cancels (
 );
  
 CREATE TABLE Redeems (
-    buys_date       DATE NOT NULL,
     redeems_date    DATE NOT NULL,
+    buys_date       DATE NOT NULL,
+    package_id      INTEGER NOT NULL,
+    cust_id         INTEGER NOT NULL,
     sid             INTEGER NOT NULL,
     course_offering_id TEXT NOT NULL,
-    PRIMARY KEY     (redeems_date, buys_date, sid, course_offering_id),
-    FOREIGN KEY     (buys_date) REFERENCES Buys(buys_date),
+    PRIMARY KEY     (redeems_date, buys_date, package_id, cust_id, sid, course_offering_id),
+    FOREIGN KEY     (buys_date, package_id, cust_id) REFERENCES Buys(buys_date, package_id, cust_id),
     FOREIGN KEY     (sid, course_offering_id) REFERENCES OfferingSessions(sid, course_offering_id)
 );
