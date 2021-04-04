@@ -1,12 +1,12 @@
 CREATE TABLE Employees (
-    eid                 INTEGER,
+    eid                 Serial,
     employee_name       TEXT NOT NULL,
     employee_address    TEXT NOT NULL,
-    email               TEXT NOT NULL,
+    email               TEXT NOT NULL unique,
     depart_date         DATE,
     join_date           DATE NOT NULL,  
-    phone               TEXT NOT NULL,
-	PRIMARY KEY         (eid)
+    phone               TEXT NOT NULL unique,
+    PRIMARY KEY         (eid)
 );
  
 CREATE TABLE Instructors (
@@ -40,7 +40,7 @@ create table Managers (
     eid integer primary key references Full_time_Emp
         on delete cascade
 );
-
+ 
 CREATE TABLE Course_areas (
     area_name TEXT,
     eid INTEGER,
@@ -73,7 +73,7 @@ create table Specialises (
 );
  
 create table Customers (
-    cust_id INTEGER,
+    cust_id SERIAL,
     customer_address TEXT NOT NULL,
     customer_name TEXT NOT NULL,
     phone TEXT NOT NULL,
@@ -95,37 +95,37 @@ create table Owns (
     FOREIGN KEY (cc_number) REFERENCES Credit_cards,
     FOREIGN KEY (cust_id) REFERENCES Customers
 );
-
+ 
 CREATE TABLE Rooms (
-	rid			        INTEGER,
-	room_location	    TEXT not null,
-	seating_capacity	INTEGER not null,
-	PRIMARY KEY	(rid)
+    rid                 INTEGER,
+    room_location       TEXT not null,
+    seating_capacity    INTEGER not null,
+    PRIMARY KEY (rid)
 );
-
+ 
 CREATE TABLE Course_packages (
-	package_id			    INTEGER,
-	num_free_registrations 	INTEGER not null,
-	sale_start_date		    DATE not null,
-	sale_end_date		    DATE not null,
-	pkg_name			    TEXT not null,
-	price				    TEXT not null,
-	cc_number			    INTEGER,
-	cust_id			        INTEGER,
-	PRIMARY KEY		        (package_id),
-	FOREIGN KEY		        (cc_number, cust_id) REFERENCES Owns
+    package_id              SERIAL,
+    num_free_registrations  INTEGER not null,
+    sale_start_date         DATE not null,
+    sale_end_date           DATE not null,
+    pkg_name                TEXT not null,
+    price                   NUMERIC not null,
+    PRIMARY KEY             (package_id),
 );
-
+ 
 CREATE TABLE Buys (
-	buys_date					DATE,
-	package_id					INTEGER,
-	num_remaining_redemptions	INTEGER not null,
-	PRIMARY KEY					(buys_date),
-	FOREIGN KEY					(package_id) REFERENCES Course_packages
+    buys_date                   DATE,
+    package_id                  INTEGER,
+    num_remaining_redemptions   INTEGER not null,
+    cc_number                   INTEGER,
+    cust_id                     INTEGER,
+    PRIMARY KEY                 (buys_date, package_id, cust_id),
+    FOREIGN KEY                 (cc_number, cust_id) REFERENCES Owns,
+    FOREIGN KEY                 (package_id) REFERENCES Course_packages
 );
-
+ 
 CREATE TABLE Courses (
-    course_id               INTEGER UNIQUE NOT NULL,
+    course_id               Serial UNIQUE NOT NULL,
     duration                NUMERIC(2,2) NOT NULL,
     course_description      TEXT NOT NULL,
     title                   TEXT NOT NULL, 
@@ -133,9 +133,9 @@ CREATE TABLE Courses (
     PRIMARY KEY             (course_id, area_name),
     foreign key             (area_name) references Course_areas
 );
-
+ 
 CREATE TABLE CourseOfferings (
-    course_offering_id          TEXT,
+    course_offering_id          TEXT UNIQUE NOT NULL,
     launch_date                 DATE NOT NULL,
     course_start_date           DATE NOT NULL,
     course_end_date             DATE NOT NULL,
@@ -146,73 +146,69 @@ CREATE TABLE CourseOfferings (
                                 >= 10),
     target_number_registrations INTEGER NOT NULL,
     seating_capacity            INTEGER NOT NULL,
-    fees                        NUMERIC NOT NULL
-                                constraint minimum_fee check (fees >= 0),
-    course_id                   INTEGER NOT NULL,
-    eid                         INTEGER NOT NULL,
+    fees                        NUMERIC NOT NULL,
+    course_id                   INTEGER,
+    eid                         INTEGER,
     PRIMARY KEY                 (course_offering_id),
-    UNIQUE                      (launch_date, eid, course_id),
     FOREIGN KEY                 (eid) references Administrators(eid),
     FOREIGN KEY                 (course_id) references Courses(course_id) ON DELETE CASCADE
 );
-
-CREATE TABLE OfferingSessions (
-
-    course_offering_id  TEXT,
-
-    sid			        SERIAL UNIQUE NOT NULL,
-                        /*not sure if this UNIQUE is accurate or not*/
-	start_time	        INTEGER
-	                    constraint sessions_start_time check ((start_time >= 9 and start_time < 12) or (start_time >= 14 and start_time <= 18)),
-	end_time            INTEGER
-	                    constraint sessions_end_time check ((end_time >= 9 and end_time < 12) or (end_time >= 14 and end_time <= 18)),
-	sessions_date	    DATE
-                        constraint weekday_constraint check (DATE_PART('isodow', sessions_date::DATE) in (2,3,4,5,6)),
-	launch_date		    DATE,
-	PRIMARY KEY	        (course_offering_id, launch_date),
-	FOREIGN KEY	        (course_offering_id, launch_date) REFERENCES CourseOfferings(course_offering_id, launch_date) ON DELETE CASCADE
-);
-
-CREATE TABLE Conducts (
-	rid			INTEGER,
-	sid			INTEGER,
-	eid			INTEGER not null,
-	PRIMARY KEY	(rid, sid, eid),
-	FOREIGN KEY	(rid) REFERENCES Rooms(rid),
-	FOREIGN KEY	(sid) REFERENCES OfferingSessions(sid),
-	FOREIGN KEY	(eid) REFERENCES Instructors(eid)
-);
-
-create table Register (
-    register_date   DATE,
-    cc_number       INTEGER UNIQUE NOT NULL,
-    cust_id         INTEGER UNIQUE NOT NULL,
-    sid             INTEGER UNIQUE NOT NULL, 
-    PRIMARY KEY     (cc_number, cust_id, register_date, sid),
-    FOREIGN KEY     (cc_number, cust_id) REFERENCES Owns(cc_number, cust_id),
-    FOREIGN KEY     (sid) REFERENCES OfferingSessions(sid)
  
+CREATE TABLE OfferingSessions (
+    sid             INTEGER NOT NULL,
+    start_time      INTEGER
+                    constraint sessions_start_time check ((start_time >= 9 and start_time < 12) or (start_time >= 14 and start_time <= 18)),
+    end_time        INTEGER
+                    constraint sessions_end_time check ((end_time >= 9 and end_time < 12) or (end_time >= 14 and end_time <= 18)),
+    sessions_date   DATE
+                    constraint weekday_constraint check (DATE_PART('isodow', sessions_date::DATE) in (2,3,4,5,6)),
+    course_offering_id TEXT,
+    PRIMARY KEY     (sid, course_offering_id),
+    FOREIGN KEY     (course_offering_id) REFERENCES CourseOfferings(course_offering_id) ON DELETE CASCADE
 );
-
+ 
+CREATE TABLE Conducts (
+    rid         INTEGER NOT NULL,
+    sid         INTEGER NOT NULL,
+    eid         INTEGER NOT NULL,
+    course_offering_id TEXT NOT NULL,
+    PRIMARY KEY (rid, sid, course_offering_id, eid),
+    FOREIGN KEY (rid) REFERENCES Rooms(rid),
+    FOREIGN KEY (sid, course_offering_id) REFERENCES OfferingSessions(sid, course_offering_id),
+    FOREIGN KEY (eid) REFERENCES Instructors(eid)
+);
+ 
+create table Registers (
+    register_date   DATE,
+    cc_number       INTEGER NOT NULL,
+    cust_id         INTEGER NOT NULL,
+    sid             INTEGER NOT NULL,
+    course_offering_id TEXT NOT NULL,
+    PRIMARY KEY     (cc_number, cust_id, register_date, sid, course_offering_id),
+    FOREIGN KEY     (cc_number, cust_id) REFERENCES Owns(cc_number, cust_id),
+    FOREIGN KEY     (sid, course_offering_id ) REFERENCES OfferingSessions(sid, course_offering_id)
+ );
+ 
 create table Cancels (
     cancel_date     DATE,
     sid             INTEGER UNIQUE NOT NULL,
+    course_offering_id TEXT NOT NULL,
     cust_id         INTEGER UNIQUE NOT NULL,
     refund_amount   NUMERIC NOT NULL
                     constraint refund_constraint check (refund_amount >= 0),
     package_credit  INTEGER NOT NULL
                     constraint package_credit_constraint check (package_credit >= 0),
     PRIMARY KEY     (cancel_date, sid, cust_id),
-    FOREIGN KEY     (sid) REFERENCES OfferingSessions(sid),
+    FOREIGN KEY     (sid, course_offering_id) REFERENCES OfferingSessions(sid, course_offering_id),
     FOREIGN KEY     (cust_id) REFERENCES Customers(cust_id)    
 );
-
-
+ 
 CREATE TABLE Redeems (
-	redeems_date	DATE,
-	buys_date		DATE,
-	sid			    INTEGER,
-	PRIMARY KEY	    (redeems_date),
-	FOREIGN KEY	    (buys_date) REFERENCES Buys(buys_date),
-	FOREIGN KEY	    (sid) REFERENCES OfferingSessions(sid)
+    buys_date       DATE NOT NULL,
+    redeems_date    DATE NOT NULL,
+    sid             INTEGER NOT NULL,
+    course_offering_id TEXT NOT NULL,
+    PRIMARY KEY     (redeems_date, buys_date, sid, course_offering_id),
+    FOREIGN KEY     (buys_date) REFERENCES Buys(buys_date),
+    FOREIGN KEY     (sid, course_offering_id) REFERENCES OfferingSessions(sid, course_offering_id)
 );
